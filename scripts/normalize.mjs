@@ -2,10 +2,14 @@
 // derived fields (discount, price per kg/l) that the stores don't give us.
 
 import { categorize } from './categories.mjs';
+/** @import { Offer } from '../src/lib/types.ts' */
 
+/** @param {number} n */
 const round2 = (n) => Math.round(n * 100) / 100;
+/** @param {string | null | undefined} s */
 const clean = (s) => (s ?? '').replace(/\s+/g, ' ').trim();
 
+/** @type {Record<string, ['kg' | 'l', number]>} */
 const UNIT = {
   кг: ['kg', 1], kg: ['kg', 1], г: ['kg', 0.001], гр: ['kg', 0.001], g: ['kg', 0.001],
   л: ['l', 1], l: ['l', 1], мл: ['l', 0.001], ml: ['l', 0.001],
@@ -18,6 +22,7 @@ const UNITS = '(кг|kg|гр|г|g|мл|ml|л|l)(?![а-яa-z])';
  * "4 х 95 г", "0,75 л" or "за kg". Returns null for ranges ("88 - 256 г")
  * and anything we can't read with confidence.
  */
+/** @type {(price: number, pack: string) => { value: number, unit: 'kg' | 'l' } | null} */
 export function unitPrice(price, pack) {
   if (price == null || !pack) return null;
   const p = pack.toLowerCase().replace(/х/g, 'x');
@@ -44,6 +49,7 @@ const PIECES = '(бр|броя|брой|капсули|капс|пранета|�
 
 // Typical weight of one capsule per system (grams), for estimating how many
 // capsules a box has when the pack only states its weight.
+/** @type {[RegExp, number][]} */
 const CAPSULE_GRAMS = [
   [/dolce gusto/i, 7],
   [/cafissimo|k-fee|caffitaly/i, 7],
@@ -81,6 +87,10 @@ export function pieceCount({ pack = '', name = '', brand = '' }) {
   return null;
 }
 
+/**
+ * @param {string} store
+ * @param {string} sourceId
+ */
 function storeUrl(store, sourceId) {
   if (store === 'kaufland') {
     const id = sourceId.split('-')[1];
@@ -94,8 +104,23 @@ function storeUrl(store, sourceId) {
 }
 
 /**
- * @param {object} raw  one record in the bgpromo.pages.dev shape
- * @returns {object|null} a normalized offer, or null when it's unusable
+ * The fields we read from a bgpromo.pages.dev record.
+ * @typedef {object} BgpromoRecord
+ * @property {{ name: string }} vendor
+ * @property {string} promoid
+ * @property {string} brand
+ * @property {string} product
+ * @property {string | null} package
+ * @property {number} newprice
+ * @property {number | null} oldprice
+ * @property {string} valid_from
+ * @property {string} valid_to
+ * @property {string} image
+ */
+
+/**
+ * @param {BgpromoRecord} raw  one record in the bgpromo.pages.dev shape
+ * @returns {Offer | null} a normalized offer, or null when it's unusable
  */
 export function normalizeBgpromo(raw) {
   const store = clean(raw.vendor?.name).toLowerCase();
@@ -156,7 +181,11 @@ export function normalizeBgpromo(raw) {
   };
 }
 
-/** Drop exact duplicates and offers that already expired. */
+/**
+ * Drop exact duplicates and offers that already expired.
+ * @param {Offer[]} offers
+ * @param {string} today
+ */
 export function dedupe(offers, today) {
   const seen = new Set();
   const out = [];

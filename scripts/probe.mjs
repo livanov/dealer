@@ -33,6 +33,6 @@ for (const url of process.argv.slice(2)) {
       if (++n >= 25) break;
     }
   } catch (err) {
-    console.log('ERROR', err.message);
+    console.log('ERROR', /** @type {Error} */ (err).message);
   }
 }

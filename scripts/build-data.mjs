@@ -12,6 +12,7 @@ import { CATEGORIES } from './categories.mjs';
 import { dedupe } from './normalize.mjs';
 import * as bgpromo from './sources/bgpromo.mjs';
 import { loadHistory, lows, record, saveHistory } from './history.mjs';
+/** @import { DataFile, Offer, Store } from '../src/lib/types.ts' */
 
 const SOURCES = [bgpromo];
 const STORES = [
@@ -34,6 +35,7 @@ function previousUrl() {
   return `https://${owner}.github.io/${name}/data/offers.json`;
 }
 
+/** @returns {Promise<DataFile | null>} */
 async function loadPrevious() {
   try {
     return JSON.parse(await readFile(out, 'utf8'));
@@ -42,13 +44,15 @@ async function loadPrevious() {
   if (!url) return null;
   try {
     const res = await fetch(url);
-    return res.ok ? await res.json() : null;
+    return res.ok ? /** @type {DataFile} */ (await res.json()) : null;
   } catch {
     return null;
   }
 }
 
+/** @type {Offer[]} */
 const offers = [];
+/** @type {Record<string, Pick<Store, 'ok' | 'source' | 'updatedAt'>>} */
 const status = {};
 let previous;
 
@@ -61,7 +65,7 @@ for (const source of SOURCES) {
     }
     console.log(`✓ ${source.id}: ${got.length} offers`);
   } catch (err) {
-    console.error(`✗ ${source.id}: ${err.message}`);
+    console.error(`✗ ${source.id}: ${/** @type {Error} */ (err).message}`);
   }
 }
 
@@ -94,6 +98,7 @@ if (history) {
   console.log(`History: none at ${historyDir} — skipping lowest prices`);
 }
 
+/** @type {DataFile} */
 const data = {
   version: 1,
   historySince,

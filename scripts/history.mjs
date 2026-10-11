@@ -14,26 +14,48 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+/** @import { Offer } from '../src/lib/types.ts' */
 
+/**
+ * @typedef {[pid: string, price: number, old: number | null, from: string | null, to: string | null,
+ *   seen: string, last: string, id?: string]} PriceRow
+ * @typedef {object} History
+ * @property {string} dir
+ * @property {Record<string, { s: string, n: string, k: string }>} products
+ * @property {Record<string, PriceRow[]>} months  by "YYYY-MM"
+ */
+
+/** @param {string} s */
 const norm = (s) =>
   (s ?? '')
     .toLowerCase()
     .replace(/[^a-zа-я0-9]+/gi, ' ')
     .trim();
 
+/** @param {Offer} o */
 export const productKey = (o) => `${o.store}|${norm(`${o.brand} ${o.name}`)}|${norm(o.pack)}`;
+/** @param {Offer} o */
 export const productId = (o) => createHash('sha1').update(productKey(o)).digest('hex').slice(0, 12);
 
 const VAGUE_CATS = new Set(['nonfood', 'other']);
 const WINDOWS = { m3: 92, m6: 183, m12: 366 };
+/** @param {string} day */
 const month = (day) => day.slice(0, 7);
 
+/**
+ * @param {string} day
+ * @param {number} n
+ */
 function addDays(day, n) {
   const d = new Date(`${day}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * @param {string} path
+ * @param {unknown} fallback
+ */
 async function readJson(path, fallback) {
   try {
     return JSON.parse(await readFile(path, 'utf8'));
@@ -42,9 +64,14 @@ async function readJson(path, fallback) {
   }
 }
 
+/**
+ * @param {string} dir
+ * @returns {Promise<History | null>}
+ */
 export async function loadHistory(dir) {
   if (!dir || !existsSync(dir)) return null;
   const products = await readJson(join(dir, 'products.json'), {});
+  /** @type {History['months']} */
   const months = {};
   const files = existsSync(join(dir, 'prices')) ? await readdir(join(dir, 'prices')) : [];
   for (const f of files.filter((f) => /^\d{4}-\d{2}\.json$/.test(f)).sort())
@@ -52,7 +79,12 @@ export async function loadHistory(dir) {
   return { dir, products, months };
 }
 
-/** Add today's offers; returns how many new price records were written. */
+/**
+ * Add today's offers; returns how many new price records were written.
+ * @param {History} history
+ * @param {Offer[]} offers
+ * @param {string} today
+ */
 export function record(history, offers, today) {
   const { products, months } = history;
   const m = (months[month(today)] ??= []);
@@ -67,6 +99,7 @@ export function record(history, offers, today) {
       row[6] = today;
       continue;
     }
+    /** @type {PriceRow} */
     const fresh = [pid, o.price, o.old, o.from, o.to, today, today, o.id];
     rows.set(key, fresh);
     m.push(fresh);
@@ -75,6 +108,10 @@ export function record(history, offers, today) {
   return added;
 }
 
+/**
+ * @param {History} history
+ * @param {string} today
+ */
 export async function saveHistory(history, today) {
   const { dir, products, months } = history;
   await mkdir(join(dir, 'prices'), { recursive: true });
@@ -88,10 +125,20 @@ export async function saveHistory(history, today) {
  * For each offer: the lowest price of the same product in earlier promos
  * (not this one), per window, as { m3: [price, day], … }. Also returns the
  * first day of history so the app can say how far back it looked.
+ * @param {History} history
+ * @param {Offer[]} offers
+ * @param {string} today
  */
 export function lows(history, offers, today) {
+  /** @type {Map<string, PriceRow[]>} */
   const byPid = new Map();
+  /** @type {Map<string, PriceRow[]>} */
   const byId = new Map();
+  /**
+   * @param {Map<string, PriceRow[]>} map
+   * @param {string} key
+   * @param {PriceRow} r
+   */
   const push = (map, key, r) => map.set(key, [...(map.get(key) ?? []), r]);
   let since = null;
   for (const recs of Object.values(history.months))
@@ -107,9 +154,11 @@ export function lows(history, offers, today) {
     const byName = (o.brand || o.pack) && !VAGUE_CATS.has(o.cat) ? productId(o) : null;
     const recs = [...new Set([...(byName ? byPid.get(byName) ?? [] : []), ...(byId.get(o.id) ?? [])])];
     const start = o.from ?? today;
+    /** @type {Record<string, [number, string]>} */
     const low = {};
     for (const [w, days] of Object.entries(WINDOWS)) {
       const after = addDays(today, -days);
+      /** @type {[number, string] | null} */
       let best = null;
       for (const [, price, , from, to, seen, last] of recs) {
         const day = from ?? seen;

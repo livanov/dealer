@@ -2,6 +2,7 @@
 import sharp from 'sharp';
 import { writeFile } from 'node:fs/promises';
 
+/** @type {(fill: string, hole: string) => string} */
 const tag = (fill, hole) => `
   <g transform="rotate(45 256 256)">
     <path d="M256 92 L372 196 V404 a24 24 0 0 1 -24 24 H164 a24 24 0 0 1 -24 -24 V196 Z" fill="${fill}" stroke="${fill}" stroke-width="28" stroke-linejoin="round"/>
@@ -9,6 +10,7 @@ const tag = (fill, hole) => `
   </g>
   <text x="242" y="322" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="112" fill="${hole}" text-anchor="middle">%</text>`;
 
+/** @param {boolean} pad */
 const icon = (pad) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="${pad ? 0 : 112}" fill="#0E1012"/>
   <g transform="translate(256 256) scale(${pad ? 0.66 : 0.82}) translate(-256 -256)">${tag('#C6F432', '#0E1012')}</g>
@@ -20,6 +22,7 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 
 const out = 'public/icons';
 await writeFile(`${out}/favicon.svg`, icon(false));
+/** @type {[string, string, number][]} */
 const jobs = [
   [icon(false), 'icon-192.png', 192],
   [icon(false), 'icon-512.png', 512],

@@ -15,10 +15,10 @@ export const attribution = [
 export async function fetchOffers() {
   const res = await fetch(URL, { headers: { 'user-agent': 'dealer-bot (+https://github.com/livanov/dealer)' } });
   if (!res.ok) throw new Error(`${URL} → HTTP ${res.status}`);
-  const json = await res.json();
+  const json = /** @type {{ scrape_time?: string, promos?: unknown }} */ (await res.json());
   if (!Array.isArray(json.promos)) throw new Error('unexpected promos.json shape');
   return {
     scrapedAt: json.scrape_time ?? null,
-    offers: json.promos.map(normalizeBgpromo).filter(Boolean),
+    offers: json.promos.map(normalizeBgpromo).filter((o) => o !== null),
   };
 }
