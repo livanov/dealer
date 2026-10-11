@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-import { listLink, parseIncoming, searchLink } from '../src/lib/share';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { listLink, parseIncoming, searchLink, shareOrCopy } from '../src/lib/share';
 
 beforeAll(() => {
   (globalThis as unknown as { location: object }).location = { origin: 'https://livanov.github.io', pathname: '/dealer/' };
@@ -32,5 +32,19 @@ describe('share links', () => {
     expect(parseIncoming('#/list?l=%%%not-base64')).toBeNull();
     expect(parseIncoming('#/offers')).toBeNull();
     expect(parseIncoming('#/offers?s=1&sort=evil&m=999')).toMatchObject({ search: { sort: 'relevance', filters: { minPct: 90 } } });
+  });
+});
+
+describe('shareOrCopy', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('treats a dismissed share sheet as cancelled, without copying', async () => {
+    const writeText = vi.fn();
+    vi.stubGlobal('navigator', {
+      share: vi.fn().mockRejectedValue(new DOMException('Share canceled', 'AbortError')),
+      clipboard: { writeText },
+    });
+    expect(await shareOrCopy({ title: 'Скир', url: 'https://livanov.github.io/dealer/' })).toBe('cancelled');
+    expect(writeText).not.toHaveBeenCalled();
   });
 });

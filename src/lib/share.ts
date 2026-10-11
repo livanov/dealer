@@ -106,15 +106,17 @@ export function offerText(o: Offer, storeName: string, when?: string): string {
   return `${name} – ${euro(o.price)}${o.pct ? ` (−${o.pct}%)` : ''} в ${storeName}${when ? `, ${when}` : ''}`;
 }
 
+export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed';
+
 /** Native share sheet where available, otherwise copy to the clipboard. */
-export async function shareOrCopy(data: { title: string; text?: string; url: string }): Promise<'shared' | 'copied' | 'failed'> {
+export async function shareOrCopy(data: { title: string; text?: string; url: string }): Promise<ShareResult> {
   try {
     if (navigator.share) {
       await navigator.share(data);
       return 'shared';
     }
   } catch (e) {
-    if ((e as DOMException)?.name === 'AbortError') return 'failed';
+    if ((e as DOMException)?.name === 'AbortError') return 'cancelled';
   }
   try {
     await navigator.clipboard.writeText(data.text ? `${data.text}\n${data.url}` : data.url);

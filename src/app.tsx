@@ -11,7 +11,7 @@ import { OfferDetail } from './components/OfferDetail';
 import { CardMenu, HideSheet } from './components/CardMenu';
 import { CategoryOrderSheet } from './components/CategoryOrderSheet';
 import { ImportListSheet } from './components/ImportListSheet';
-import { listLink, offerLink, offerText, parseIncoming, searchLink, shareOrCopy, type Incoming } from './lib/share';
+import { listLink, offerLink, offerText, parseIncoming, searchLink, shareOrCopy, type Incoming, type ShareResult } from './lib/share';
 import { WatchEditor } from './components/WatchEditor';
 import { WatchScreen } from './components/WatchScreen';
 import { ListScreen } from './components/ListScreen';
@@ -212,7 +212,7 @@ export function App() {
     setIncoming(null);
   }, [incoming, data]);
 
-  const shared = (res: 'shared' | 'copied' | 'failed') => {
+  const shared = (res: ShareResult) => {
     if (res === 'copied') say('Линкът е копиран');
     else if (res === 'failed') say('Не успях да споделя');
   };
