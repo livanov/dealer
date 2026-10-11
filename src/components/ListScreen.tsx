@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import type { DataFile, ListItem } from '../lib/types';
 import { StoreBadge } from './StoreBadge';
 import { euro, isoDay } from '../lib/offers';
@@ -39,8 +39,9 @@ export function ListScreen({
   const byStore = new Map<string, ListItem[]>();
   for (const it of items) byStore.set(it.store, [...(byStore.get(it.store) ?? []), it]);
   const today = isoDay();
-  const status = new Map<string, ListStatus>(
-    data ? items.map((it) => [it.id, listStatus(it, data.offers, today)]) : [],
+  const status = useMemo(
+    () => new Map<string, ListStatus>(data ? items.map((it) => [it.id, listStatus(it, data.offers, today)]) : []),
+    [items, data, today],
   );
   const expired = (it: ListItem) => !!status.get(it.id)?.expired;
   // Expired promos don't count: their price is no longer what you'd pay.
