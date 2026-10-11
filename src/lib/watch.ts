@@ -89,24 +89,34 @@ export type Notify = (title: string, options: NotificationOptions) => Promise<vo
 
 /**
  * Download the latest offers, cache them, and notify about watch matches we
- * haven't told the user about yet. Returns the data (fresh, or cached on failure).
+ * haven't told the user about yet. Returns the data (fresh, or cached on
+ * failure) and whether the download worked.
  */
-export async function refresh(dataUrl: string, notify: Notify | null): Promise<DataFile | undefined> {
+export async function refresh(
+  dataUrl: string,
+  notify: Notify | null,
+): Promise<{ data: DataFile | undefined; fetched: boolean }> {
   let data: DataFile | undefined;
   try {
     const res = await fetch(dataUrl, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data = (await res.json()) as DataFile;
+  } catch {
+    return { data: await getCachedData(), fetched: false };
+  }
+  try {
     await idbSet('data', data);
     await idbSet('checkedAt', Date.now());
   } catch {
-    return getCachedData();
+    // Saving failed (storage full?). Show the download anyway; alerts wait for
+    // a refresh that can also save which offers were already announced.
+    return { data, fetched: true };
   }
 
   const watches = await getWatches();
   const notified = new Set((await idbGet<string[]>('notified')) ?? []);
   const fresh = await markNotified(watches, data.offers, notified);
-  if (!fresh.length) return data;
+  if (!fresh.length) return { data, fetched: true };
 
   // Every new match lands in the in-app inbox; a system notification is extra.
   const today = isoDay();
@@ -120,5 +130,5 @@ export async function refresh(dataUrl: string, notify: Notify | null): Promise<D
   }));
   await saveInbox([...items, ...(await getInbox())]);
   if (notify) for (const it of items) await notify(...alertFor(it.term, it.body, it.watchId));
-  return data;
+  return { data, fetched: true };
 }

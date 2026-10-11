@@ -10,7 +10,10 @@ function open(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      dbp = null;
+      reject(req.error);
+    };
   });
   return dbp;
 }
@@ -23,6 +26,7 @@ function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest)
         const req = fn(tx.objectStore(STORE));
         tx.oncomplete = () => resolve(req.result as T);
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
       }),
   );
 }

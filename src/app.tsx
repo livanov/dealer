@@ -127,14 +127,17 @@ export function App() {
   const doRefresh = useCallback(
     async (manual = false) => {
       setRefreshing(true);
-      const before = (await getCachedData())?.generatedAt;
-      const fresh = await refresh(DATA_URL, alertsOn ? showNotification : null);
-      if (fresh) setData(fresh);
-      setInbox(await getInbox());
-      setCheckedAt((await idbGet<number>('checkedAt')) ?? null);
-      setRefreshing(false);
-      setLoading(false);
-      if (manual) say(!fresh ? 'Няма връзка – показвам запазените оферти' : fresh.generatedAt !== before ? 'Офертите са обновени' : 'Няма нови оферти');
+      try {
+        const before = (await getCachedData())?.generatedAt;
+        const { data: fresh, fetched } = await refresh(DATA_URL, alertsOn ? showNotification : null);
+        if (fresh) setData(fresh);
+        setInbox(await getInbox());
+        setCheckedAt((await idbGet<number>('checkedAt')) ?? null);
+        if (manual) say(!fetched ? 'Няма връзка – показвам запазените оферти' : fresh?.generatedAt !== before ? 'Офертите са обновени' : 'Няма нови оферти');
+      } finally {
+        setRefreshing(false);
+        setLoading(false);
+      }
     },
     [alertsOn, say],
   );
