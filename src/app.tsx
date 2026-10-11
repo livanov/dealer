@@ -17,7 +17,7 @@ import { WatchScreen } from './components/WatchScreen';
 import { ListScreen } from './components/ListScreen';
 import { InboxScreen } from './components/InboxScreen';
 import { SettingsScreen } from './components/SettingsScreen';
-import { itemFromOffer } from './lib/list';
+import { itemFromOffer, removedBy, restoreItems } from './lib/list';
 import { Icon, type IconName } from './components/Icon';
 import { useInstall } from './lib/install';
 import { piecePrice } from './lib/units';
@@ -288,16 +288,21 @@ export function App() {
   const inList = (o: Offer) => list.some((i) => i.id === o.id);
   const listIds = useMemo(() => new Set(list.map((i) => i.id)), [list]);
   const isInList = useCallback((o: Offer) => listIds.has(o.id), [listIds]);
-  const toggleList = (o: Offer) => {
-    if (inList(o)) {
-      const before = list;
-      setList((prev) => prev.filter((i) => i.id !== o.id));
-      say('Махнато от списъка', () => setList(before));
-    } else {
-      setList((prev) => [...prev, itemFromOffer(o)]);
-      say('Добавено в списъка');
-    }
-  };
+  const listRef = useRef(list);
+  listRef.current = list;
+  const toggleList = useCallback(
+    (o: Offer) => {
+      const removed = removedBy(listRef.current, (i) => i.id === o.id);
+      if (removed.length) {
+        setList((prev) => prev.filter((i) => i.id !== o.id));
+        say('Махнато от списъка', () => setList((prev) => restoreItems(prev, removed)));
+      } else {
+        setList((prev) => [...prev, itemFromOffer(o)]);
+        say('Добавено в списъка');
+      }
+    },
+    [say, setList],
+  );
 
   // Followed products that have at least one offer right now.
   const watchesOnSale = useMemo(
@@ -416,15 +421,14 @@ export function App() {
           setItems={setList}
           onShare={shareList}
           onRemove={(it) => {
-            const before = list;
+            const removed = removedBy(list, (x) => x.id === it.id);
             setList((prev) => prev.filter((x) => x.id !== it.id));
-            say(`Махнато: ${it.name}`, () => setList(before));
+            say(`Махнато: ${it.name}`, () => setList((prev) => restoreItems(prev, removed)));
           }}
           onClearDone={() => {
-            const before = list;
-            const n = list.filter((i) => i.done).length;
+            const removed = removedBy(list, (i) => i.done);
             setList((prev) => prev.filter((i) => !i.done));
-            say(`Махнати ${n} отметнати`, () => setList(before));
+            say(`Махнати ${removed.length} отметнати`, () => setList((prev) => restoreItems(prev, removed)));
           }}
         /> : null}
       {route === 'settings' ? (
@@ -542,10 +546,12 @@ export function App() {
           offers={data.offers}
           onClose={() => setHideFor(null)}
           onHide={(term) => {
-            const before = filters;
-            if (!filters.hide.some((h) => h.toLowerCase() === term.toLowerCase())) setFilters({ ...filters, hide: [...filters.hide, term] });
+            const added = !filters.hide.some((h) => h.toLowerCase() === term.toLowerCase());
+            if (added) setFilters({ ...filters, hide: [...filters.hide, term] });
             setHideFor(null);
-            say(`Скрито: „${term}“`, () => setFilters(before));
+            say(`Скрито: „${term}“`, () => {
+              if (added) setFilters((f) => ({ ...f, hide: f.hide.filter((h) => h !== term) }));
+            });
           }}
         />
       ) : null}

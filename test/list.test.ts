@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listStatus, nameSimilarity, itemFromOffer } from '../src/lib/list';
+import { listStatus, nameSimilarity, itemFromOffer, removedBy, restoreItems } from '../src/lib/list';
 import type { Offer } from '../src/lib/types';
 
 const offer = (p: Partial<Offer>): Offer =>
@@ -36,5 +36,20 @@ describe('shopping list status', () => {
   it('compares names by shared words', () => {
     expect(nameSimilarity('Вълчев Крема сирене', 'Вълчев крема сирене')).toBe(1);
     expect(nameSimilarity('Вълчев Крема сирене', 'Кашкавал')).toBe(0);
+  });
+});
+
+describe('undoing a removal', () => {
+  const [a, b, c, d] = ['A', 'B', 'C', 'D'].map((id) => itemFromOffer(offer({ id, name: id })));
+
+  it('puts the removed items back in place and keeps changes made since', () => {
+    const removed = removedBy([a, b, c, d], (i) => i.id === 'B' || i.id === 'D');
+    const ticked = { ...c, done: true };
+    expect(restoreItems([a, ticked], removed)).toEqual([a, b, ticked, d]);
+  });
+
+  it('skips an item that is already back on the list', () => {
+    const removed = removedBy([a, b], (i) => i.id === 'B');
+    expect(restoreItems([a, b], removed)).toEqual([a, b]);
   });
 });

@@ -50,3 +50,19 @@ export const itemFromOffer = (o: Offer, done = false): ListItem => ({
   done,
   image: o.image,
 });
+
+export interface Removed {
+  item: ListItem;
+  at: number;
+}
+
+/** The items `pick` selects, with their positions, so a removal can be undone. */
+export const removedBy = (list: ListItem[], pick: (it: ListItem) => boolean): Removed[] =>
+  list.flatMap((item, at) => (pick(item) ? [{ item, at }] : []));
+
+/** Undo a removal: put the items back where they were, keeping changes made since. */
+export function restoreItems(list: ListItem[], removed: Removed[]): ListItem[] {
+  const out = [...list];
+  for (const { item, at } of removed) if (!out.some((i) => i.id === item.id)) out.splice(Math.min(at, out.length), 0, item);
+  return out;
+}
