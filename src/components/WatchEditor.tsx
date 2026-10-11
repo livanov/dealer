@@ -31,7 +31,7 @@ export function WatchEditor({
   const [maxPrice, setMaxPrice] = useState(str(initial.maxPrice));
   const [minPct, setMinPct] = useState(str(initial.minPct));
   const [maxUnit, setMaxUnit] = useState(str(initial.maxUnit));
-  const [unitKind, setUnitKind] = useState<UnitKind>(initial.unitKind ?? 'kg');
+  const [unitKind, setUnitKind] = useState(initial.unitKind);
   const [includeUnknown, setIncludeUnknown] = useState(!!initial.includeUnknown);
   const [exclude, setExclude] = useState(initial.exclude.join(', '));
 

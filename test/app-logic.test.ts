@@ -87,6 +87,13 @@ describe('watchMatches', () => {
     expect(watchMatches(w({ exclude: ['капсули'] }), dg, TODAY)).toBe(false);
     expect(watchMatches(w({}), { ...dg, to: '2026-10-01' }, TODAY)).toBe(false);
   });
+  it('reads a unit limit without a unit as per kg or litre', () => {
+    const milk = offer({ name: 'Прясно мляко', unit: 1.79, unitOf: 'l' });
+    const yogurt = offer({ name: 'Кисело мляко', unit: 2.48, unitOf: 'kg' });
+    expect(watchMatches(w({ term: 'мляко', maxUnit: 2.5 }), milk, TODAY)).toBe(true);
+    expect(watchMatches(w({ term: 'мляко', maxUnit: 2.5 }), yogurt, TODAY)).toBe(true);
+    expect(watchMatches(w({ term: 'мляко', maxUnit: 2.5, unitKind: 'kg' }), milk, TODAY)).toBe(false);
+  });
 });
 
 describe('relevance sort', () => {

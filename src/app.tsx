@@ -45,6 +45,7 @@ const newWatch = (term = ''): Watch => ({
   maxPrice: null,
   minPct: null,
   maxUnit: null,
+  unitKind: 'kg',
   exclude: [],
   createdAt: Date.now(),
 });
