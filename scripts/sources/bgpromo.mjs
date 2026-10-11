@@ -13,7 +13,10 @@ export const attribution = [
 ];
 
 export async function fetchOffers() {
-  const res = await fetch(URL, { headers: { 'user-agent': 'dealer-bot (+https://github.com/livanov/dealer)' } });
+  const res = await fetch(URL, {
+    headers: { 'user-agent': 'dealer-bot (+https://github.com/livanov/dealer)' },
+    signal: AbortSignal.timeout(60_000),
+  });
   if (!res.ok) throw new Error(`${URL} → HTTP ${res.status}`);
   const json = await res.json();
   if (!Array.isArray(json.promos)) throw new Error('unexpected promos.json shape');

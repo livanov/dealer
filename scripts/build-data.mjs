@@ -2,14 +2,16 @@
 // Builds public/data/offers.json — the single file the app downloads.
 // Runs in GitHub Actions on a schedule (and locally via `npm run data`).
 //
-// If a source fails, the stores it covers fall back to the offers from the
-// currently deployed site, so one broken scraper never empties the app.
+// A store falls back to the offers from the currently deployed site when its
+// source fails or returns less than half the offers it had last time, so one
+// broken scraper never empties the app.
 
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CATEGORIES } from './categories.mjs';
 import { dedupe } from './normalize.mjs';
+import { keepFresh } from './fallback.mjs';
 import * as bgpromo from './sources/bgpromo.mjs';
 import { loadHistory, lows, record, saveHistory } from './history.mjs';
 
@@ -41,16 +43,15 @@ async function loadPrevious() {
   const url = previousUrl();
   if (!url) return null;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
     return res.ok ? await res.json() : null;
   } catch {
     return null;
   }
 }
 
-const offers = [];
+let offers = [];
 const status = {};
-let previous;
 
 for (const source of SOURCES) {
   try {
@@ -65,14 +66,15 @@ for (const source of SOURCES) {
   }
 }
 
+const previous = await loadPrevious();
 for (const store of STORES) {
-  if (status[store.id]) continue;
-  previous ??= await loadPrevious();
+  const got = offers.filter((o) => o.store === store.id);
   const old = previous?.offers?.filter((o) => o.store === store.id) ?? [];
-  offers.push(...old);
   const prevStatus = previous?.stores?.find((s) => s.id === store.id);
+  if (got.length && keepFresh(got, old, prevStatus?.updatedAt, new Date())) continue;
+  offers = offers.filter((o) => o.store !== store.id).concat(old);
   status[store.id] = { ok: false, source: 'previous', updatedAt: prevStatus?.updatedAt ?? null };
-  console.warn(`! ${store.id}: using ${old.length} offers from the previous build`);
+  console.warn(`! ${store.id}: ${got.length} offers today, using ${old.length} from the previous build`);
 }
 
 const final = dedupe(offers, today).filter((o) => STORES.some((s) => s.id === o.store));
