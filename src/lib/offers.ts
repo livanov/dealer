@@ -133,6 +133,35 @@ export function groupOffers(
     .map((g) => ({ ...g, items: buckets.get(g.key)! }));
 }
 
+export interface PagedGroup {
+  group: Group;
+  closed: boolean;
+  /** Empty when closed, otherwise the offers that fit under the limit. */
+  items: Offer[];
+  /** Offers rendered in the groups above. */
+  before: number;
+}
+
+/**
+ * Spread the first `limit` offers over the open groups, in order. Collapsed groups keep
+ * their heading; open groups the limit doesn't reach are left out. `more` is true while
+ * open groups have offers past the limit.
+ */
+export function pageGroups(groups: Group[], isClosed: (g: Group) => boolean, limit: number) {
+  const shown: PagedGroup[] = [];
+  let open = 0;
+  let budget = limit;
+  for (const group of groups) {
+    const closed = isClosed(group);
+    if (!closed) open += group.items.length;
+    if (budget <= 0 && !closed) continue;
+    const items = closed ? [] : group.items.slice(0, budget);
+    shown.push({ group, closed, items, before: limit - budget });
+    budget -= items.length;
+  }
+  return { shown, more: limit < open };
+}
+
 // ---- formatting -------------------------------------------------------
 
 const WD = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];

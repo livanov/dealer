@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Category, Counts, DataFile, Filters, GroupKey, Offer, SortKey } from '../lib/types';
-import { filterOffers, groupOffers, sortOffers } from '../lib/offers';
+import { filterOffers, groupOffers, pageGroups, sortOffers } from '../lib/offers';
 import { activeFilterCount } from '../lib/prefs';
 import { OfferCard } from './OfferCard';
 import { StoreBadge } from './StoreBadge';
@@ -84,6 +84,7 @@ export function OffersScreen({
 
   // Endless list: render a page at a time, add more when the sentinel scrolls into view.
   useEffect(() => setLimit(PAGE), [q, filters, sort, group]);
+  const page = pageGroups(groups, (g) => !!g.title && collapsed.includes(`${group}:${g.key}`), limit);
   const sentinel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinel.current;
@@ -93,7 +94,12 @@ export function OffersScreen({
     });
     io.observe(el);
     return () => io.disconnect();
-  }, [results.length, limit]);
+  }, [page.more, limit]);
+  // Page again from the toggled group; the groups above keep what they show, so its heading stays put.
+  const toggleGroups = (keys: string[], before: number) => {
+    setCollapsed(keys);
+    setLimit(before + PAGE);
+  };
 
   const nFilters = activeFilterCount(filters);
   const sortLabel = SORTS.find(([k]) => k === sort)?.[1];
@@ -102,7 +108,6 @@ export function OffersScreen({
   const canShare =
     !!query.trim() || !!filters.stores.length || !!filters.cats.length || filters.validity !== 'now' || filters.minPct > 0 || sortChanged;
 
-  let budget = limit;
   return (
     <>
       <header class="top">
@@ -166,24 +171,20 @@ export function OffersScreen({
           <>
           {groups.length > 1 ? (
             <div class="row" style={{ justifyContent: 'flex-end', margin: '-4px 0 4px' }}>
-              <button class="textbtn small" onClick={() => setCollapsed(allCollapsed ? [] : groups.map((g) => `${group}:${g.key}`))}>
+              <button class="textbtn small" onClick={() => toggleGroups(allCollapsed ? [] : groups.map((g) => `${group}:${g.key}`), 0)}>
                 {allCollapsed ? 'Разгъни всички' : 'Свий всички'}
               </button>
             </div>
           ) : null}
-          {groups.map((g) => {
+          {page.shown.map(({ group: g, closed, items, before }) => {
             const ck = `${group}:${g.key}`;
-            const closed = g.title ? collapsed.includes(ck) : false;
-            if (budget <= 0 && !closed) return null;
-            const items = closed ? [] : g.items.slice(0, budget);
-            budget -= items.length;
             return (
               <section class="group" key={g.key}>
                 {g.title ? (
                   <button
                     class="grouphead"
                     aria-expanded={!closed}
-                    onClick={() => setCollapsed(closed ? collapsed.filter((k) => k !== ck) : [...collapsed, ck])}
+                    onClick={() => toggleGroups(closed ? collapsed.filter((k) => k !== ck) : [...collapsed, ck], before)}
                   >
                     <span class={`chev${closed ? ' closed' : ''}`} aria-hidden="true">
                       <Icon name="chevron" size={16} stroke={2.6} />
@@ -216,7 +217,7 @@ export function OffersScreen({
           })}
           </>
         )}
-        {limit < results.length ? <div class="sentinel" ref={sentinel} /> : null}
+        {page.more ? <div class="sentinel" ref={sentinel} /> : null}
       </main>
 
       {showFilters ? (
