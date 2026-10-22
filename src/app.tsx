@@ -246,6 +246,7 @@ export function App() {
       say(res.background === 'on' ? 'Известията са включени, вкл. във фонов режим' : 'Известията са включени');
     } else if (res.permission === 'denied') say('Известията са блокирани от браузъра');
     else if (res.permission === 'unsupported') say('Браузърът не поддържа известия');
+    else say('Известията не са включени');
   };
   // A real system notification, built like the background ones: from a followed
   // product that's on sale now, or else the biggest discount of the day.
@@ -253,7 +254,9 @@ export function App() {
     let p = perm;
     if (p !== 'granted') p = (await enableAlerts()).permission;
     setPerm(p);
-    if (p !== 'granted') return say(p === 'denied' ? 'Известията са блокирани от браузъра' : 'Браузърът не поддържа известия');
+    if (p === 'denied') return say('Известията са блокирани от браузъра');
+    if (p === 'unsupported') return say('Браузърът не поддържа известия');
+    if (p !== 'granted') return say('Известията не са включени');
     if (!data || !shown) return;
     const today = isoDay();
     const hit = watches
