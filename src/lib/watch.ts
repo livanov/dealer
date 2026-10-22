@@ -5,7 +5,7 @@
 import type { Counts, DataFile, InboxItem, Offer, Watch } from './types';
 import { unitPriceIn } from './units';
 import { idbGet, idbSet } from './idb';
-import { euro, isExpired, isoDay, searchKey, whenLabel } from './offers';
+import { addDays, euro, isExpired, isoDay, searchKey, whenLabel } from './offers';
 import { fold, matchesTokens, tokens } from './text';
 
 /** Things on the device that affect matching: typed-in piece counts, stores turned off. */
@@ -63,7 +63,7 @@ export function termFrom(o: Offer): string {
 export async function saveWatches(watches: Watch[]) {
   await idbSet('watches', watches);
   const data = await getCachedData();
-  if (data) await markNotified(watches, data.offers, new Set((await idbGet<string[]>('notified')) ?? []));
+  if (data) await markNotified(watches, data.offers, await getNotified());
 }
 
 // An offer is announced before it starts (Kaufland publishes next week's on
@@ -72,13 +72,23 @@ export async function saveWatches(watches: Watch[]) {
 const stage = (o: Offer, today: string) => (o.from && o.from > today ? 'soon' : 'now');
 const seenKey = (w: Watch, o: Offer, st: string) => `${w.id}|${o.id}|${st}`;
 
-async function markNotified(watches: Watch[], offers: Offer[], notified: Set<string>) {
-  const today = isoDay();
-  const ctx = await getCtx();
+/** For each notified `watchId|offerId|stage`: the last day to remember it. */
+export type Notified = Record<string, string>;
+const GRACE_DAYS = 14;
+
+/**
+ * Matches the user hasn't been told about, and the notified keys to store.
+ * A key stays until its offer ends (or GRACE_DAYS after its last match, for
+ * offers without an end date), so an offer that misses a check (store turned
+ * off, left out of one data build) doesn't come back as new.
+ */
+export function freshMatches(watches: Watch[], offers: Offer[], notified: Notified, today: string, ctx: MatchCtx = {}) {
   const fresh: { watch: Watch; hits: Offer[]; starting: boolean }[] = [];
-  const keep = new Set<string>();
+  const keep: Notified = {};
+  for (const [k, until] of Object.entries(notified)) if (until >= today) keep[k] = until;
+  // Keys past their day still count: Kaufland lists next week's promo under the same id.
   // Keys from before stages ("watch|offer") count as the "soon" ping.
-  const seen = (w: Watch, o: Offer, st: string) => notified.has(seenKey(w, o, st)) || (st === 'soon' && notified.has(`${w.id}|${o.id}`));
+  const seen = (w: Watch, o: Offer, st: string) => !!notified[seenKey(w, o, st)] || (st === 'soon' && !!notified[`${w.id}|${o.id}`]);
   for (const w of watches) {
     const hits = offers.filter((o) => watchMatches(w, o, today, ctx));
     const unseen = hits.filter((o) => !seen(w, o, stage(o, today)));
@@ -86,13 +96,26 @@ async function markNotified(watches: Watch[], offers: Offer[], notified: Set<str
     const starting = unseen.length > 0 && unseen.every((o) => seen(w, o, 'soon'));
     if (unseen.length) fresh.push({ watch: w, hits: unseen, starting });
     for (const o of hits) {
-      keep.add(seenKey(w, o, stage(o, today)));
-      if (seen(w, o, 'soon')) keep.add(seenKey(w, o, 'soon'));
+      const until = o.to ?? addDays(today, GRACE_DAYS);
+      keep[seenKey(w, o, stage(o, today))] = until;
+      if (seen(w, o, 'soon')) keep[seenKey(w, o, 'soon')] = until;
     }
   }
-  // Only keep keys for offers that still exist, so the set can't grow forever.
-  await idbSet('notified', [...keep]);
-  return fresh;
+  return { fresh, notified: keep };
+}
+
+/** Older versions stored only the keys of current matches, under 'notified'. */
+export const fromLegacy = (keys: string[], today: string): Notified =>
+  Object.fromEntries(keys.map((k) => [k, addDays(today, GRACE_DAYS)]));
+
+async function getNotified(): Promise<Notified> {
+  return (await idbGet<Notified>('notifiedUntil')) ?? fromLegacy((await idbGet<string[]>('notified')) ?? [], isoDay());
+}
+
+async function markNotified(watches: Watch[], offers: Offer[], notified: Notified) {
+  const res = freshMatches(watches, offers, notified, isoDay(), await getCtx());
+  await idbSet('notifiedUntil', res.notified);
+  return res.fresh;
 }
 
 /** One line about the cheapest hit: store · price (−pct%) · when · and N more. */
@@ -140,7 +163,7 @@ export async function refresh(
   }
 
   const watches = await getWatches();
-  const notified = new Set((await idbGet<string[]>('notified')) ?? []);
+  const notified = await getNotified();
   const fresh = await markNotified(watches, data.offers, notified);
   if (!fresh.length) return { data, fetched: true };
 
