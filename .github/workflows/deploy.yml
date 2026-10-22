@@ -29,6 +29,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run lint
       # Price history lives on the `data` branch (data only, no code). Check it
       # out into ./history; the very first run starts it as an empty branch.
       # Only ls-remote's exit code 2 means there's no branch yet; other errors
