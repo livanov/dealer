@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Counts, DataFile, InboxItem, ListItem, Offer, Watch } from './lib/types';
 import { euro, isoDay, orderCategories, whenLabel } from './lib/offers';
-import { idbGet } from './lib/idb';
+import { idbGet, idbSet } from './lib/idb';
 import { alertBody, alertFor, getCachedData, getCounts, getInbox, getWatches, refresh, saveInbox, saveWatches, termFrom, watchMatches } from './lib/watch';
-import { idbSet } from './lib/idb';
 import { useApplyTheme, useCatOrder, useFilters, useGroup, useList, useSort, useStored, useTheme } from './lib/prefs';
 import { backgroundStatus, disableBackground, enableAlerts, permission, showNotification, type Background } from './lib/alerts';
 import { OffersScreen } from './components/OffersScreen';
@@ -87,7 +86,7 @@ export function App() {
     setCounts(next);
     await idbSet('counts', next);
   };
-  const [orderOpen, setOrderOpen] = useState<null | 'sort' | 'settings'>(null);
+  const [orderOpen, setOrderOpen] = useState<null | 'sort'>(null);
   const [alertsWanted, setAlertsWanted] = useStored('alerts', false);
   const alertsOn = alertsWanted && perm === 'granted';
   useApplyTheme(theme);
@@ -106,9 +105,9 @@ export function App() {
   const categories = useMemo(() => (data ? orderCategories(data.categories, catOrder) : []), [data, catOrder]);
   const catCounts = useMemo(() => {
     const c: Record<string, number> = {};
-    for (const o of data?.offers ?? []) c[o.cat] = (c[o.cat] ?? 0) + 1;
+    for (const o of shown?.offers ?? []) c[o.cat] = (c[o.cat] ?? 0) + 1;
     return c;
-  }, [data]);
+  }, [shown]);
 
   const toastTimer = useRef<number>();
   const say = useCallback((msg: string, undo?: () => void) => {
@@ -339,6 +338,7 @@ export function App() {
             onCart={toggleList}
             onMenu={setMenuFor}
             categories={categories}
+            catCounts={catCounts}
             onEditOrder={() => setOrderOpen('sort')}
             query={query}
             setQuery={setQuery}

@@ -115,8 +115,9 @@ export function record(history, offers, today) {
 export async function saveHistory(history, today) {
   const { dir, products, months } = history;
   await mkdir(join(dir, 'prices'), { recursive: true });
-  await writeFile(join(dir, 'products.json'), JSON.stringify(products));
-  // Only this month's file changes; one record per line keeps git diffs small.
+  // One entry per line keeps git diffs small. Only this month's price file changes.
+  const entries = Object.entries(products).map(([pid, p]) => `${JSON.stringify(pid)}:${JSON.stringify(p)}`);
+  await writeFile(join(dir, 'products.json'), `{\n${entries.join(',\n')}\n}\n`);
   const m = months[month(today)] ?? [];
   await writeFile(join(dir, 'prices', `${month(today)}.json`), `[\n${m.map((r) => JSON.stringify(r)).join(',\n')}\n]\n`);
 }
@@ -139,7 +140,11 @@ export function lows(history, offers, today) {
    * @param {string} key
    * @param {PriceRow} r
    */
-  const push = (map, key, r) => map.set(key, [...(map.get(key) ?? []), r]);
+  const push = (map, key, r) => {
+    const list = map.get(key);
+    if (list) list.push(r);
+    else map.set(key, [r]);
+  };
   let since = null;
   for (const recs of Object.values(history.months))
     for (const r of recs) {

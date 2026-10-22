@@ -35,10 +35,6 @@ self.addEventListener('periodicsync', ((e: Event & { tag: string; waitUntil(p: P
   if (e.tag === 'refresh-offers') e.waitUntil(backgroundCheck());
 }) as EventListener);
 
-self.addEventListener('message', (e) => {
-  if (e.data === 'check-now') e.waitUntil(backgroundCheck());
-});
-
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const target = new URL(e.notification.data?.url ?? '', self.registration.scope).href;

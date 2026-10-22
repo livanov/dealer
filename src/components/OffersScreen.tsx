@@ -35,6 +35,7 @@ export function OffersScreen({
   onCart,
   onMenu,
   categories,
+  catCounts,
   onEditOrder,
   query,
   setQuery,
@@ -55,6 +56,7 @@ export function OffersScreen({
   onMenu: (o: Offer) => void;
   /** Categories in the user's order. */
   categories: Category[];
+  catCounts: Record<string, number>;
   onEditOrder: () => void;
   query: string;
   setQuery: (q: string) => void;
@@ -76,11 +78,6 @@ export function OffersScreen({
   );
   const groups = useMemo(() => groupOffers(results, group, data.stores, categories, today), [results, group, data, today, categories]);
   const allCollapsed = groups.length > 1 && groups.every((g) => collapsed.includes(`${group}:${g.key}`));
-  const catCounts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const o of data.offers) c[o.cat] = (c[o.cat] ?? 0) + 1;
-    return c;
-  }, [data]);
 
   // Endless list: render a page at a time, add more when the sentinel scrolls into view.
   useEffect(() => setLimit(PAGE), [q, filters, sort, group]);
