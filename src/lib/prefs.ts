@@ -4,6 +4,8 @@ import type { Filters, GroupKey, ListItem, SortKey } from './types';
 export type ThemePref = 'system' | 'light' | 'dark';
 
 export const DEFAULT_FILTERS: Filters = { stores: [], cats: [], validity: 'now', minPct: 0, hide: [] };
+/** Hidden words are a personal list built up over time, so clearing keeps them. */
+export const clearFilters = (f: Filters): Filters => ({ ...DEFAULT_FILTERS, hide: f.hide });
 
 /** useState that persists to localStorage (best effort — private mode may refuse). */
 export function useStored<T>(key: string, fallback: T) {

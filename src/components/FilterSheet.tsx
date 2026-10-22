@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { Category, Filters, Store, Validity } from '../lib/types';
-import { DEFAULT_FILTERS } from '../lib/prefs';
+import { clearFilters } from '../lib/prefs';
 import { Sheet } from './Sheet';
 import { StoreBadge } from './StoreBadge';
 import { Icon } from './Icon';
@@ -36,7 +36,7 @@ export function FilterSheet({
       title="Филтри"
       onClose={onClose}
       action={
-        <button class="textbtn" onClick={() => setF(DEFAULT_FILTERS)}>
+        <button class="textbtn" onClick={() => setF(clearFilters(f))}>
           Изчисти
         </button>
       }
