@@ -14,7 +14,7 @@ for (const url of process.argv.slice(2)) {
     const text = await res.text();
     console.log(`status ${res.status} · ${res.headers.get('content-type')} · ${text.length} bytes · final ${res.url}`);
     if (!/html/.test(res.headers.get('content-type') ?? '')) {
-      console.log(text.slice(0, 1500));
+      console.log(text.slice(0, Number(process.env.PROBE_MAX) || 1500));
       continue;
     }
     console.log('title:', (text.match(/<title[^>]*>([^<]*)/i) ?? [])[1]?.trim());

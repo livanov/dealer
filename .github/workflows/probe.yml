@@ -7,6 +7,10 @@ on:
       urls:
         description: Space-separated URLs to fetch
         required: true
+      max:
+        description: Characters of non-HTML responses to print
+        required: false
+        default: '1500'
 
 permissions:
   contents: read
@@ -22,4 +26,5 @@ jobs:
       - name: Probe
         env:
           URLS: ${{ inputs.urls }}
+          PROBE_MAX: ${{ inputs.max }}
         run: node scripts/probe.mjs $URLS
