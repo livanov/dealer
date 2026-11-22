@@ -4,6 +4,7 @@ import { useRef, useState } from 'preact/hooks';
 import type { Offer, Store } from '../lib/types';
 import { euro, whenLabel } from '../lib/offers';
 import { imageCors } from '../lib/images';
+import { bestTier, tierLabel } from '../lib/tiers';
 import { Icon } from './Icon';
 
 export function storeColor(store: Store | undefined) {
@@ -130,6 +131,7 @@ export const OfferCard = memo(function OfferCard({ offer: o, store, today, inLis
           <span class="price">{euro(o.price)}</span>
           {o.old ? <span class="old">{euro(o.old)}</span> : null}
         </div>
+        {o.tiers?.length ? <div class="tierchip">{tierLabel(bestTier(o.tiers)!)}</div> : null}
         <div class="meta">
           <span class="unit">{unit}</span>
           {when ? <span class={`when tone-${when.tone}`}>{when.text}</span> : null}

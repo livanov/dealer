@@ -7,6 +7,7 @@ const LOOK: Record<string, { bg: string; fg: string; letter: string }> = {
   billa: { bg: '#FFE600', fg: '#D20A11', letter: 'B' },
   fantastico: { bg: '#E30613', fg: '#FFD200', letter: 'F' },
   tmarket: { bg: '#00873E', fg: '#FFFFFF', letter: 'T' },
+  metro: { bg: '#002D72', fg: '#FFED00', letter: 'M' },
 };
 
 export function StoreBadge({ store, id, size = 18 }: { store?: Store; id?: string; size?: number }) {

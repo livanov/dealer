@@ -13,14 +13,16 @@ import { CATEGORIES } from './categories.mjs';
 import { dedupe } from './normalize.mjs';
 import { keepFresh } from './fallback.mjs';
 import * as bgpromo from './sources/bgpromo.mjs';
+import * as metro from './sources/metro.mjs';
 import { loadHistory, lows, record, saveHistory } from './history.mjs';
 /** @import { DataFile, Offer, Store } from '../src/lib/types.ts' */
 
-const SOURCES = [bgpromo];
+const SOURCES = [bgpromo, metro];
 const STORES = [
   { id: 'kaufland', name: 'Kaufland', color: '#E10915' },
   { id: 'lidl', name: 'Lidl', color: '#0050AA' },
   { id: 'billa', name: 'Billa', color: '#FFE600' },
+  { id: 'metro', name: 'Metro', color: '#002D72' },
 ];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -64,7 +66,9 @@ for (const source of SOURCES) {
       offers.push(o);
       status[o.store] ??= { ok: true, source: source.id, updatedAt: scrapedAt };
     }
-    console.log(`✓ ${source.id}: ${got.length} offers`);
+    const tiered = got.filter((o) => o.tiers?.length).length;
+    console.log(`✓ ${source.id}: ${got.length} offers${tiered ? `, ${tiered} with quantity prices` : ''}`);
+    if (source === metro) for (const o of got.filter((x) => x.tiers?.length).slice(0, 3).concat(got.slice(0, 3))) console.log(`  ${o.brand} ${o.name} · ${o.pack} · €${o.price} (${o.old ?? '—'}) · ${o.from}–${o.to} · ${o.cat}${o.tiers ? ` · ${JSON.stringify(o.tiers)}` : ''}`);
   } catch (err) {
     console.error(`✗ ${source.id}: ${/** @type {Error} */ (err).message}`);
   }
@@ -111,7 +115,7 @@ const data = {
     count: final.filter((o) => o.store === s.id).length,
   })),
   categories: CATEGORIES,
-  attribution: bgpromo.attribution,
+  attribution: [...bgpromo.attribution, ...metro.attribution],
   offers: final,
 };
 

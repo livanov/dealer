@@ -41,10 +41,11 @@ export function searchLink(s: SharedSearch): string {
 }
 
 /** Compact list payload: [id, store, name, pack, price, to]. */
-type Row = [string, string, string, string, number, string | null];
+// [id, store, name, pack, price, to, qty?]; qty only when above 1.
+type Row = [string, string, string, string, number, string | null, number?];
 
 export function listLink(items: ListItem[]): string {
-  const rows: Row[] = items.map((i) => [i.id, i.store, i.name, i.pack, i.price, i.to]);
+  const rows: Row[] = items.map((i) => (i.qty && i.qty > 1 ? [i.id, i.store, i.name, i.pack, i.price, i.to, i.qty] : [i.id, i.store, i.name, i.pack, i.price, i.to]));
   return `${base()}#/list?l=${toB64(JSON.stringify(rows))}`;
 }
 
@@ -71,7 +72,16 @@ export function parseIncoming(hash: string): Incoming {
       const items = rows
         .filter((r) => Array.isArray(r) && typeof r[0] === 'string' && typeof r[4] === 'number')
         .slice(0, 200)
-        .map(([id, store, name, pack, price, to]) => ({ id, store: String(store), name: String(name), pack: String(pack ?? ''), price, to: to ?? null, done: false }));
+        .map(([id, store, name, pack, price, to, qty]) => ({
+          id,
+          store: String(store),
+          name: String(name),
+          pack: String(pack ?? ''),
+          price,
+          to: to ?? null,
+          done: false,
+          ...(Number(qty) > 1 ? { qty: Math.min(999, Math.round(Number(qty))) } : {}),
+        }));
       return items.length ? { kind: 'list', items } : null;
     } catch {
       return null;

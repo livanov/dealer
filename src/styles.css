@@ -1596,3 +1596,70 @@ h1.title {
   font-weight: 700;
   cursor: pointer;
 }
+.tierchip {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+table.tiers {
+  border-collapse: collapse;
+  margin-bottom: 4px;
+}
+table.tiers td {
+  padding: 2px 12px 2px 0;
+  white-space: nowrap;
+}
+.lqty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.qbtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.qbtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.qn {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+.tierhint {
+  padding: 2px 8px;
+  border: 1px dashed var(--accent-ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tierok {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-ink);
+}

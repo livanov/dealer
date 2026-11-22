@@ -2,7 +2,8 @@
 // page (on open / pull to refresh) and the service worker (periodic
 // background sync), so everything here sticks to fetch + IndexedDB.
 
-import type { Counts, DataFile, InboxItem, Offer, Watch } from './types';
+import type { Counts, DataFile, InboxItem, Offer, PriceTier, Watch } from './types';
+import { bestTier, tierLabel } from './tiers';
 import { unitPriceIn } from './units';
 import { idbGet, idbSet } from './idb';
 import { addDays, euro, isExpired, isoDay, searchKey, whenLabel } from './offers';
@@ -20,6 +21,11 @@ export function watchMatches(w: Watch, o: Offer, today: string, ctx: MatchCtx = 
   const key = searchKey(o);
   if (!matchesTokens(key, tokens(w.term))) return false;
   if (w.exclude.some((x) => x && key.includes(fold(x)))) return false;
+  // Quantity prices count too: "€0.29/бр. from 20 pieces" meets a €0.30 limit.
+  return [o, ...(o.tiers ?? []).map((t) => atTier(o, t))].some((v) => limitsOk(w, v, ctx));
+}
+
+function limitsOk(w: Watch, o: Offer, ctx: MatchCtx): boolean {
   const limits = [
     w.maxPrice != null ? o.price <= w.maxPrice : null,
     w.minPct != null ? (o.pct ?? 0) >= w.minPct : null,
@@ -27,6 +33,17 @@ export function watchMatches(w: Watch, o: Offer, today: string, ctx: MatchCtx = 
   ].filter((x) => x !== null);
   // Any one satisfied limit is enough ("≤ €5 or ≥ 25% off"); no limits = any match.
   return limits.length === 0 || limits.some(Boolean);
+}
+
+/** The offer as if its price were a quantity tier's price per piece. */
+function atTier(o: Offer, t: PriceTier): Offer {
+  const ref = o.old ?? o.price;
+  return {
+    ...o,
+    price: t.price,
+    pct: Math.round((1 - t.price / ref) * 100) || null,
+    unit: o.unit != null ? Math.round(((o.unit * t.price) / o.price) * 100) / 100 : null,
+  };
 }
 
 function unitLimitOk(w: Watch, o: Offer, counts: Counts = {}): boolean {
@@ -123,7 +140,8 @@ export function alertBody(hits: Offer[], data: DataFile, today: string) {
   const best = hits.slice().sort((a, b) => a.price - b.price)[0];
   const store = data.stores.find((s) => s.id === best.store)?.name ?? best.store;
   const when = whenLabel(best, today)?.text;
-  const parts = [store, `${euro(best.price)}${best.pct ? ` (−${best.pct}%)` : ''}`, when].filter(Boolean);
+  const tier = bestTier(best.tiers);
+  const parts = [store, `${euro(best.price)}${best.pct ? ` (−${best.pct}%)` : ''}`, tier && tierLabel(tier), when].filter(Boolean);
   return parts.join(' · ') + (hits.length > 1 ? ` · и още ${hits.length - 1}` : '');
 }
 

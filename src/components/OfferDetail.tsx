@@ -121,6 +121,32 @@ export function OfferDetail({
               <dd>{pp ? unitText(wp) : <strong>{unitText(wp)}</strong>}</dd>
             </>
           ) : null}
+          {o.tiers?.length ? (
+            <>
+              <dt>При количество</dt>
+              <dd>
+                <table class="tiers">
+                  <tbody>
+                    <tr>
+                      <td>1 бр.</td>
+                      <td>{euro(o.price)}</td>
+                      <td class="muted">{wp ? unitText(wp) : ''}</td>
+                    </tr>
+                    {o.tiers.map((t) => (
+                      <tr key={t.min}>
+                        <td>от {t.min} бр.</td>
+                        <td>
+                          <strong>{euro(t.price)}</strong> <span class="tone-next">−{Math.round((1 - t.price / o.price) * 100)}%</span>
+                        </td>
+                        <td class="muted">{wp ? unitText({ ...wp, value: (wp.value * t.price) / o.price }) : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <span class="muted small">Цена на брой при покупка на поне толкова.</span>
+              </dd>
+            </>
+          ) : null}
           {!pp && !wp ? (
             <>
               <dt>Цена за брой</dt>
@@ -129,6 +155,12 @@ export function OfferDetail({
           ) : null}
           <dt>Валидност</dt>
           <dd>{validity}</dd>
+          {o.store === 'metro' ? (
+            <>
+              <dt>Условия</dt>
+              <dd class="muted">С клиентска карта METRO. Цени с ДДС в METRO София – Цариградско шосе; в другите магазини може да се различават.</dd>
+            </>
+          ) : null}
           {category ? (
             <>
               <dt>Категория</dt>

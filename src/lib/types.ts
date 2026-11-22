@@ -20,6 +20,14 @@ export interface Offer {
   cat: string;
   /** Lowest earlier promo price of this product: [price, day] per window. */
   low?: Partial<Record<'m3' | 'm6' | 'm12', [number, string]>>;
+  /** Cheaper prices per piece when buying more (METRO), by minimum quantity. */
+  tiers?: PriceTier[];
+}
+
+/** From `min` pieces on, each costs `price`. */
+export interface PriceTier {
+  min: number;
+  price: number;
 }
 
 export interface Store {
@@ -86,6 +94,10 @@ export interface ListItem {
   to: string | null;
   done: boolean;
   image?: string | null;
+  /** How many to buy (default 1). */
+  qty?: number;
+  /** Quantity prices, copied from the offer. */
+  tiers?: PriceTier[];
 }
 
 export interface InboxItem {

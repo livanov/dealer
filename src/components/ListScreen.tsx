@@ -2,7 +2,8 @@ import { useMemo, useState } from 'preact/hooks';
 import type { DataFile, ListItem } from '../lib/types';
 import { StoreBadge } from './StoreBadge';
 import { euro, isoDay } from '../lib/offers';
-import { itemFromOffer, listStatus, type ListStatus } from '../lib/list';
+import { itemFromOffer, lineTotal, listStatus, qtyOf, type ListStatus } from '../lib/list';
+import { bestTier, priceAt, tierLabel } from '../lib/tiers';
 import { imageCors } from '../lib/images';
 import { Icon } from './Icon';
 
@@ -37,8 +38,14 @@ export function ListScreen({
   const stores = data?.stores ?? [];
   // Older list items were saved without a photo; take it from today's offers.
   const imageOf = (it: ListItem) => it.image ?? data?.offers.find((o) => o.id === it.id)?.image ?? null;
+  // Items from shared links or older versions don't carry quantity prices.
+  const withTiers = (it: ListItem): ListItem => {
+    if (it.tiers || !data) return it;
+    const tiers = data.offers.find((o) => o.id === it.id)?.tiers;
+    return tiers ? { ...it, tiers } : it;
+  };
   const byStore = new Map<string, ListItem[]>();
-  for (const it of items) byStore.set(it.store, [...(byStore.get(it.store) ?? []), it]);
+  for (const it of items.map(withTiers)) byStore.set(it.store, [...(byStore.get(it.store) ?? []), it]);
   const today = isoDay();
   const status = useMemo(
     () => new Map<string, ListStatus>(data ? items.map((it) => [it.id, listStatus(it, data.offers, today)]) : []),
@@ -46,16 +53,19 @@ export function ListScreen({
   );
   const expired = (it: ListItem) => !!status.get(it.id)?.expired;
   // Expired promos don't count: their price is no longer what you'd pay.
-  const sum = (list: ListItem[]) => list.reduce((s, i) => s + (expired(i) ? 0 : i.price), 0);
-  const done = items.filter((i) => i.done);
+  const sum = (list: ListItem[]) => list.reduce((s, i) => s + (expired(i) ? 0 : lineTotal(i)), 0);
+  const done = items.map(withTiers).filter((i) => i.done);
   const live = items.filter((i) => !expired(i));
   const gone = items.length - live.length;
   const applyUpdate = (it: ListItem, o: NonNullable<ListStatus['update']>) =>
     setItems((prev) =>
       prev.some((x) => x.id === o.id && x.id !== it.id)
         ? prev.filter((x) => x.id !== it.id)
-        : prev.map((x) => (x.id === it.id ? itemFromOffer(o, x.done) : x)),
+        : prev.map((x) => (x.id === it.id ? { ...itemFromOffer(o, x.done), ...(x.qty ? { qty: x.qty } : {}) } : x)),
     );
+
+  const setQty = (it: ListItem, qty: number) =>
+    setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, qty: Math.max(1, Math.min(999, qty)) } : x)));
 
   return (
     <>
@@ -95,6 +105,11 @@ export function ListScreen({
                   <div>
                     {list.map((it) => {
                       const st = status.get(it.id);
+                      const qty = qtyOf(it);
+                      const each = priceAt(it.price, it.tiers, qty);
+                      // The next quantity that would make each piece cheaper.
+                      const next = it.tiers?.find((t) => t.min > qty && t.price < each);
+                      const best = bestTier(it.tiers);
                       return (
                         <div class={`listrow${it.done ? ' done' : ''}${st?.expired ? ' expired' : ''}`} key={it.id}>
                           <label class="row grow" style={{ gap: '10px', minHeight: '56px' }}>
@@ -106,6 +121,46 @@ export function ListScreen({
                             <Thumb src={imageOf(it)} />
                             <span class="grow stack" style={{ gap: '3px', minWidth: 0 }}>
                               <span class="lname">{it.name}</span>
+                              <span class="lqty">
+                                <button
+                                  class="qbtn"
+                                  aria-label={`По-малко ${it.name}`}
+                                  disabled={qty <= 1}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setQty(it, qty - 1);
+                                  }}
+                                >
+                                  −
+                                </button>
+                                <span class="qn" aria-label="Брой">
+                                  {qty}
+                                </span>
+                                <button
+                                  class="qbtn"
+                                  aria-label={`Още ${it.name}`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setQty(it, qty + 1);
+                                  }}
+                                >
+                                  +
+                                </button>
+                                {qty > 1 ? <span class="muted small">× {euro(each)}</span> : null}
+                                {next ? (
+                                  <button
+                                    class="tierhint"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setQty(it, next.min);
+                                    }}
+                                  >
+                                    {tierLabel(next)}
+                                  </button>
+                                ) : best && qty >= best.min ? (
+                                  <span class="tierok">цена от {best.min} бр.</span>
+                                ) : null}
+                              </span>
                               {st?.expired ? <span class="lstate">Промоцията изтече</span> : null}
                               {st?.update ? (
                                 <button
@@ -119,7 +174,7 @@ export function ListScreen({
                                 </button>
                               ) : null}
                             </span>
-                            <strong class="lprice">{euro(it.price)}</strong>
+                            <strong class="lprice">{euro(lineTotal(it))}</strong>
                           </label>
                           <button class="iconbtn ghost remove" aria-label={`Махни ${it.name}`} onClick={() => onRemove(it)}>
                             <Icon name="close" size={18} />
@@ -145,7 +200,7 @@ export function ListScreen({
               </div>
               <div class="stack" style={{ gap: '2px', alignItems: 'flex-end' }}>
                 <span class="muted small">Общо</span>
-                <span class="grand">{euro(sum(items))}</span>
+                <span class="grand">{euro(sum(items.map(withTiers)))}</span>
               </div>
             </section>
           </>

@@ -5,6 +5,7 @@
 import type { ListItem, Offer } from './types';
 import { isExpired } from './offers';
 import { fold } from './text';
+import { priceAt } from './tiers';
 
 export interface ListStatus {
   expired: boolean;
@@ -49,7 +50,14 @@ export const itemFromOffer = (o: Offer, done = false): ListItem => ({
   to: o.to,
   done,
   image: o.image,
+  ...(o.tiers?.length ? { tiers: o.tiers } : {}),
 });
+
+/** Pieces of this item to buy. */
+export const qtyOf = (it: ListItem) => Math.max(1, Math.round(it.qty ?? 1));
+
+/** What the item costs at its quantity, with quantity prices applied. */
+export const lineTotal = (it: ListItem) => Math.round(qtyOf(it) * priceAt(it.price, it.tiers, qtyOf(it)) * 100) / 100;
 
 export interface Removed {
   item: ListItem;

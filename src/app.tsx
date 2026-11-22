@@ -16,7 +16,7 @@ import { WatchScreen } from './components/WatchScreen';
 import { ListScreen } from './components/ListScreen';
 import { InboxScreen } from './components/InboxScreen';
 import { SettingsScreen } from './components/SettingsScreen';
-import { itemFromOffer, removedBy, restoreItems } from './lib/list';
+import { lineTotal, qtyOf, itemFromOffer, removedBy, restoreItems } from './lib/list';
 import { Icon, type IconName } from './components/Icon';
 import { useInstall } from './lib/install';
 import { piecePrice } from './lib/units';
@@ -227,7 +227,9 @@ export function App() {
     );
   };
   const shareList = async () => {
-    const text = ['Моят списък за пазаруване:', ...list.map((i) => `• ${i.name}${i.pack ? ` (${i.pack})` : ''} – ${euro(i.price)} · ${storeName(i.store)}`)].join('\n');
+    const line = (i: ListItem) =>
+      `• ${qtyOf(i) > 1 ? `${qtyOf(i)} × ` : ''}${i.name}${i.pack ? ` (${i.pack})` : ''} – ${euro(lineTotal(i))} · ${storeName(i.store)}`;
+    const text = ['Моят списък за пазаруване:', ...list.map(line)].join('\n');
     shared(await shareOrCopy({ title: 'Списък за пазаруване', text, url: listLink(list) }));
   };
 
