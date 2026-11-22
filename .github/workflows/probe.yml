@@ -6,7 +6,12 @@ on:
     inputs:
       urls:
         description: Space-separated URLs to fetch
-        required: true
+        required: false
+        default: ''
+      script:
+        description: Or run this dev script instead (e.g. scripts/dev/metro-survey.mjs)
+        required: false
+        default: scripts/probe.mjs
       max:
         description: Characters of non-HTML responses to print
         required: false
@@ -27,4 +32,5 @@ jobs:
         env:
           URLS: ${{ inputs.urls }}
           PROBE_MAX: ${{ inputs.max }}
-        run: node scripts/probe.mjs $URLS
+          SCRIPT: ${{ inputs.script }}
+        run: node "$SCRIPT" $URLS
