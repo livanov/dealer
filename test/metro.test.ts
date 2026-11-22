@@ -99,7 +99,7 @@ describe('METRO offers', () => {
       bundle({ description: 'aro Копирна хартия A4 500л', contentData: { netPieceWeight: { value: 600, uom: 'GRAM' } }, categories: [{ name: 'Офис' }] }),
       { food: false, store: STORE },
     )!;
-    expect(paper.cat).toBe('nonfood');
+    expect(paper).toMatchObject({ cat: 'nonfood', pack: '', unit: null, name: 'Копирна хартия A4 500л' });
   });
 
   it('skips articles without a deal or a price at our store', () => {
@@ -111,6 +111,23 @@ describe('METRO offers', () => {
   it('walks a whole response', () => {
     const res = { result: { a: { food: true, variants: { '0032': { bundles: { '0021': bundle() } } } } } };
     expect(normalizeMetroArticles(res, STORE)).toHaveLength(1);
+  });
+
+  it('leaves standing deals open-ended', () => {
+    const bowl = normalizeMetro(
+      bundle(
+        { description: 'METRO PROFESSIONAL Купа кръгла 24см', brandInfo: { displayBrandName: 'METRO PROFESSIONAL' } },
+        {
+          finalPrice: 9.98,
+          grossStrikeThrough: null,
+          promotionLabels: {},
+          dnrInfo: { x: { name: 'КУПИ ПОВЕЧЕ', logic: 'QD', start: '2026-01-08T22:00:00Z', end: '2949-01-01T21:59:00Z' } },
+          summaryDnrInfo: { levels: { '1': { finalSingleGrossPrice: '9.98' }, '2': { finalSingleGrossPrice: '9.18' }, '3': { finalSingleGrossPrice: '7.99' } } },
+        },
+      ),
+      { food: false, store: STORE },
+    )!;
+    expect(bowl).toMatchObject({ from: '2026-01-09', to: null, pack: '', tiers: [{ min: 2, price: 9.18 }, { min: 3, price: 7.99 }] });
   });
 
   it('converts UTC times to the day in Sofia', () => {

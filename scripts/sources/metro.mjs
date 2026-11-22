@@ -92,9 +92,14 @@ export function sofiaDay(/** @type {string | null | undefined} */ iso) {
   return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Sofia' });
 }
 
-/** "1000 g" → "1 кг", "750 ml" → "750 мл", from METRO's content data. */
-function packOf(/** @type {any} */ bundle) {
+/**
+ * "1000 g" → "1 кг", "750 ml" → "750 мл", from METRO's content data. For
+ * non-food the weight is the item's shipping weight (a bowl, a ream of paper),
+ * not something to price per kg, so only food gets one.
+ */
+function packOf(/** @type {any} */ bundle, /** @type {boolean} */ food) {
   if (bundle.isWeightArticle === 'WEIGHT') return 'кг';
+  if (!food) return '';
   const vol = bundle.contentData?.netContentVolume;
   const wt = bundle.contentData?.netPieceWeight;
   const fmt = (/** @type {number} */ v, /** @type {string} */ small, /** @type {string} */ big) =>
@@ -102,6 +107,13 @@ function packOf(/** @type {any} */ bundle) {
   if (vol?.value && /^ML$/i.test(vol.uom)) return fmt(vol.value, 'мл', 'л');
   if (wt?.value && /^GRAM$/i.test(wt.uom)) return fmt(wt.value, 'г', 'кг');
   return '';
+}
+
+/** Standing deals end in the year 2949; treat anything over a year away as open-ended. */
+function openEnded(/** @type {string | null} */ day) {
+  if (!day) return null;
+  const inAYear = new Date(Date.now() + 366 * 86_400_000).toISOString().slice(0, 10);
+  return day > inAYear ? null : day;
 }
 
 /** The size at the end of METRO's titles, which we show as the pack instead. */
@@ -141,7 +153,7 @@ export function normalizeMetro(bundle, { food, store }) {
   const brand = clean(bundle.brandInfo?.displayBrandName ?? bundle.brandName);
   let name = clean(bundle.description);
   if (brand && name.toLowerCase().startsWith(brand.toLowerCase() + ' ')) name = name.slice(brand.length + 1);
-  const pack = packOf(bundle);
+  const pack = packOf(bundle, food);
   if (pack) name = name.replace(SIZE_TAIL, '').trim() || name;
   if (!name) return null;
 
@@ -174,7 +186,7 @@ export function normalizeMetro(bundle, { food, store }) {
     pcs: pcs?.n ?? null,
     pcsEst: pcs?.est ?? false,
     from: sofiaDay(/** @type {any} */ (promoDays).start),
-    to: sofiaDay(/** @type {any} */ (promoDays).end),
+    to: openEnded(sofiaDay(/** @type {any} */ (promoDays).end)),
     image: bundle.imageUrlL || bundle.imageUrl || null,
     url: bid.articleNumber ? `${BASE}/shop/pv/${bid.articleNumber}/${bid.variantNumber}/${bid.bundleNumber}` : null,
     cat,
